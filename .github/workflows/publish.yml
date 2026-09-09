@@ -1,9 +1,14 @@
-name: Publish scheduled posts
+name: Publish scheduled posts to Telegram
 
 on:
   schedule:
+    # Проверка каждый час в 5 минут после часа (UTC)
     - cron: "5 * * * *"
-  workflow_dispatch: {}
+  workflow_dispatch: {}   # позволяет запустить вручную кнопкой в Actions
+
+concurrency:
+  group: publish-scheduled-posts
+  cancel-in-progress: false
 
 permissions:
   contents: write
@@ -12,21 +17,29 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Publish
+
+      - name: Run publisher
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHANNEL_ID: ${{ secrets.TELEGRAM_CHANNEL_ID }}
         run: python publish_scheduled.py
-      - name: Commit
+
+      - name: Commit updated state.json
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          git pull --rebase
           if [ -n "$(git status --porcelain state.json)" ]; then
             git add state.json
-            git commit -m "chore: update state [skip ci]"
+            git commit -m "chore: update published posts state [skip ci]"
             git push
+          else
+            echo "state.json не изменился, коммит не нужен"
           fi
