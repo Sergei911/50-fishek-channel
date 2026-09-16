@@ -35,10 +35,10 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git pull --rebase
           if [ -n "$(git status --porcelain state.json)" ]; then
             git add state.json
             git commit -m "chore: update published posts state [skip ci]"
+            git pull --rebase --autostash
             git push
           else
             echo "state.json не изменился, коммит не нужен"
